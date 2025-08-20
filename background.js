@@ -1,10 +1,55 @@
-// Keeps the last active tab per window so we only mute what you just left.
 const lastActiveByWindow = new Map();
 let lastFocusedWindowId = null;
 
+// --- NEW: helpers to pause/resume YouTube Shorts ---
+async function pauseShortsIfNeeded(tab) {
+  if (!tab?.id) return;
+  if (!tab.url || !tab.url.includes("youtube.com/shorts/")) return;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        if (video && !video.paused) video.pause();
+      },
+    });
+  } catch (e) {
+    console.warn("Could not pause Shorts:", e);
+  }
+}
+
+async function resumeShortsIfNeeded(tab) {
+  if (!tab?.id) return;
+  if (!tab.url || !tab.url.includes("youtube.com/shorts/")) return;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        if (video && video.paused) {
+          // May be blocked by autoplay policy on some setups; ok to ignore.
+          video.play().catch(() => {});
+        }
+      },
+    });
+  } catch (e) {
+    console.warn("Could not resume Shorts:", e);
+  }
+}
+
+// --- existing: safe mute/unmute with an extra pause step on mute ---
 async function safeUpdateMute(tabId, muted) {
   if (!tabId || tabId === -1) return;
   try {
+    const tab = await chrome.tabs.get(tabId);
+
+    if (muted) {
+      // Leaving this tab: pause Shorts first.
+      await pauseShortsIfNeeded(tab);
+    }
+
     await chrome.tabs.update(tabId, { muted });
   } catch (_) {
     // Tab may have closed or become unavailable; ignore.
@@ -15,27 +60,34 @@ async function safeUpdateMute(tabId, muted) {
 chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
   const prevTabId = lastActiveByWindow.get(windowId);
   if (prevTabId && prevTabId !== tabId) {
-    await safeUpdateMute(prevTabId, true);   // mute the tab you just left
+    await safeUpdateMute(prevTabId, true); // mute the tab you just left (and pause Shorts if needed)
   }
-  await safeUpdateMute(tabId, false);        // unmute the tab you switched to
+
+  await safeUpdateMute(tabId, false);       // unmute the tab you switched to
+
+  // NEW: if it's a Shorts tab, try to auto-resume
+  try {
+    const currentTab = await chrome.tabs.get(tabId);
+    await resumeShortsIfNeeded(currentTab);
+  } catch {}
+
   lastActiveByWindow.set(windowId, tabId);
 });
 
 // When window focus changes, ensure only the focused window’s active tab is unmuted.
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  // If focus left Chrome entirely
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
 
-  // Mute the last focused window's active tab (if different window)
   if (lastFocusedWindowId !== null && lastFocusedWindowId !== windowId) {
     const prevTabId = lastActiveByWindow.get(lastFocusedWindowId);
     if (prevTabId) await safeUpdateMute(prevTabId, true);
   }
 
-  // Unmute the newly focused window's active tab
   const [activeTab] = await chrome.tabs.query({ windowId, active: true });
   if (activeTab) {
     await safeUpdateMute(activeTab.id, false);
+    // NEW: auto-resume Shorts if applicable
+    await resumeShortsIfNeeded(activeTab);
     lastActiveByWindow.set(windowId, activeTab.id);
   }
 
@@ -56,10 +108,8 @@ async function bootstrap() {
   for (const win of windows) {
     const activeTab = win.tabs?.find(t => t.active);
     if (activeTab) {
-      await safeUpdateMute(activeTab.id, false); // make sure current active is unmuted
+      await safeUpdateMute(activeTab.id, false);
       lastActiveByWindow.set(win.id, activeTab.id);
-      // Optionally, mute all others in the window. Commented out to keep it minimal.
-      // for (const t of win.tabs) if (t.id !== activeTab.id) await safeUpdateMute(t.id, true);
     }
   }
   const focused = windows.find(w => w.focused);
