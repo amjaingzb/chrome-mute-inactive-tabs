@@ -1,0 +1,7 @@
+# Ignore macOS junk
+.DS_Store
+
+# Ignore node/npm stuff if you later add tools
+node_modules/
+dist/
+
