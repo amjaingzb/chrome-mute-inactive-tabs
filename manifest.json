@@ -1,0 +1,14 @@
+{
+  "name": "Mute Inactive Tabs (Only Active Tab Plays)",
+  "description": "Automatically mute the tab you leave and unmute the one you switch to.",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "permissions": ["tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Mute Inactive Tabs"
+  }
+}
+
