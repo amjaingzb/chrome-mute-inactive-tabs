@@ -17,7 +17,7 @@ A lightweight, high-performance Chrome Extension (Manifest V3) designed for seam
 
 Since this extension is packaged for developers and privacy-conscious users, you can install it locally in under a minute:
 
-1. **Download the Source:** Click the green **Code** button at the top of this repository, select **Download ZIP**, and extract the contents to a folder on your computer.
+1. **Download the Release:** Go to the [Releases](https://github.com/amjaingzb/chrome-mute-inactive-tabs/releases) page, download the **`Source code (zip)`** for the latest release (`v1.0.0`), and extract it to a folder on your computer.
 2. **Open Extensions Page:** Open Google Chrome, type `chrome://extensions/` in the address bar, and press Enter.
 3. **Enable Developer Mode:** Toggle the **Developer mode** switch in the top-right corner of the extensions page.
 4. **Load the Extension:** Click the **Load unpacked** button in the top-left corner and select your extracted extension folder.
