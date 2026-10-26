@@ -32,8 +32,15 @@ async function pauseShortsIfNeeded(tab) {
           document.querySelector("video.html5-main-video") ||
           document.querySelector("video");
 
-        if (v && !v.paused) {
-          v.pause();
+        if (v) {
+          if (!v.paused) {
+            v.pause();
+            // Mark that the extension explicitly caused this pause
+            window._pausedByExtension = true;
+          } else {
+            // It was already paused (e.g. manually by user), so extension didn't trigger it
+            window._pausedByExtension = false;
+          }
         }
       },
     });
@@ -58,7 +65,12 @@ async function resumeShortsIfNeeded(tab) {
             document.querySelector("video");
 
           if (v) {
-            if (v.paused) v.play().catch(() => {});
+            // ONLY unpause if the extension was the one that paused it!
+            if (v.paused && window._pausedByExtension === true) {
+              v.play().catch(() => {});
+            }
+            // Reset the flag
+            window._pausedByExtension = false;
             return;
           }
           if (attempts > 0) setTimeout(() => tryPlay(attempts - 1), 150);
