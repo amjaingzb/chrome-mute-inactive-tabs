@@ -1,7 +1,7 @@
 {
   "name": "Mute Inactive Tabs (Only Active Tab Plays)",
   "description": "Automatically mute the tab you leave and unmute the one you switch to. Pauses/resumes YouTube Shorts.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "manifest_version": 3,
   "permissions": ["tabs", "scripting"],
   "host_permissions": ["*://*.youtube.com/*"],
@@ -10,6 +10,13 @@
   },
   "action": {
     "default_title": "Mute Inactive Tabs"
+  },
+  "commands": {
+    "toggle-extension": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "Enable or disable extension"
+    }
   }
 }
-

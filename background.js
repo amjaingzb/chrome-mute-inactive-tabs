@@ -1,33 +1,66 @@
+let isEnabled = true;
+
+// Listen for your Alt+Shift+M hotkey to toggle the extension state
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-extension") {
+    isEnabled = !isEnabled;
+    
+    // Set badge indicator to show OFF status when disabled
+    chrome.action.setBadgeText({ text: isEnabled ? "" : "OFF" });
+    chrome.action.setBadgeBackgroundColor({ color: "#FF0000" });
+
+    console.log("Extension enabled status:", isEnabled);
+  }
+});
+
 const lastActiveByWindow = new Map();
 let lastFocusedWindowId = null;
 
 // --- NEW: helpers to pause/resume YouTube Shorts ---
 async function pauseShortsIfNeeded(tab) {
+  if (!isEnabled) return;
   if (!tab?.id || !tab.url?.includes("youtube.com/shorts/")) return;
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
+      injectImmediately: true,
       func: () => {
-        const tryPause = (attempts = 3) => {
-          const v = document.querySelector("video");
-          if (v) { if (!v.paused) v.pause(); return; }
-          if (attempts > 0) setTimeout(() => tryPause(attempts - 1), 150);
-        };
-        tryPause();
+        // Target the active YouTube Shorts video element specifically
+        const v = 
+          document.querySelector("#shorts-player video") ||
+          document.querySelector("ytd-reel-video-renderer[is-active] video") ||
+          document.querySelector("video.html5-main-video") ||
+          document.querySelector("video");
+
+        if (v && !v.paused) {
+          v.pause();
+        }
       },
     });
-  } catch (e) { console.warn("Could not pause Shorts:", e); }
+  } catch (e) {
+    console.warn("Could not pause Shorts:", e);
+  }
 }
 
 async function resumeShortsIfNeeded(tab) {
+  if (!isEnabled) return;
   if (!tab?.id || !tab.url?.includes("youtube.com/shorts/")) return;
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
         const tryPlay = (attempts = 3) => {
-          const v = document.querySelector("video");
-          if (v) { if (v.paused) v.play().catch(() => {}); return; }
+          // Use the same robust active Shorts selectors
+          const v = 
+            document.querySelector("#shorts-player video") ||
+            document.querySelector("ytd-reel-video-renderer[is-active] video") ||
+            document.querySelector("video.html5-main-video") ||
+            document.querySelector("video");
+
+          if (v) {
+            if (v.paused) v.play().catch(() => {});
+            return;
+          }
           if (attempts > 0) setTimeout(() => tryPlay(attempts - 1), 150);
         };
         tryPlay();
@@ -38,6 +71,7 @@ async function resumeShortsIfNeeded(tab) {
 
 // --- existing: safe mute/unmute with an extra pause step on mute ---
 async function safeUpdateMute(tabId, muted) {
+  if (!isEnabled) return;
   if (!tabId || tabId === -1) return;
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -55,6 +89,8 @@ async function safeUpdateMute(tabId, muted) {
 
 // When you activate a tab, unmute it and mute the previous one in that window.
 chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+  if (!isEnabled) return;
+
   // If we don't yet know the previous tab for this window, treat this as first activation.
   if (!lastActiveByWindow.has(windowId)) {
     const tabsInWindow = await chrome.tabs.query({ windowId });
@@ -94,6 +130,7 @@ chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
 
 // When window focus changes, ensure only the focused window’s active tab is unmuted.
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (!isEnabled) return;
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
 
   if (lastFocusedWindowId !== null && lastFocusedWindowId !== windowId) {
@@ -138,4 +175,3 @@ chrome.runtime.onStartup.addListener(bootstrap);
 chrome.runtime.onInstalled.addListener(bootstrap);
 
 bootstrap(); // run immediately so first switch has state
-
