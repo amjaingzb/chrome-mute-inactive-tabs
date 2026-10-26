@@ -4,6 +4,16 @@ A lightweight, high-performance Chrome Extension (Manifest V3) designed for seam
 
 ---
 
+## 💡 The Motivation
+
+Forced ad breaks on streaming platforms like Amazon Prime Video are annoying. A common workaround is switching tabs to watch quick content—like YouTube Shorts—while waiting for the ad to finish. However, standard tab behavior causes audio overlap and forces you to manually pause videos before switching back.
+
+**Smart Tab Muter & YouTube Shorts Manager** was built to solve this exact workflow:
+- **Mutes Background Audio:** The tab with the ad goes silent automatically as soon as you switch away.
+- **Smart Pause & Resume:** YouTube Shorts play while you wait, but pause automatically the moment you return to your stream—preserving your exact video position without audio bleed.
+
+---
+
 ## ✨ Key Features
 
 * **Smart Tab Audio Management:** Automatically mutes audio on background tabs and instantly unmutes your active workspace tab.
